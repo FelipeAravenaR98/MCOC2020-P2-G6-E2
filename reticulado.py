@@ -49,32 +49,30 @@ class Reticulado(object):
 
 
 
-
-
     def agregar_restriccion(self, nodo, gdl, valor=0.0):
         """Agrega una restriccion, dado el nodo, grado de libertad y valor 
         del desplazamiento de dicho grado de libertad
-        """
+        """  
+        #Implementar
         if nodo in self.restricciones:
             self.restricciones[nodo].append([gdl,valor])
         else:
             self.restricciones[nodo] = [[gdl,valor]]
         return
-        
-
 
 
     def agregar_fuerza(self, nodo, gdl, valor):
         """Agrega una restriccion, dado el nodo, grado de libertad y valor 
         del la fuerza en la direccion de dicho GDL
         """
+
+        #Implementar
+        
         if nodo in self.cargas:
             self.cargas[nodo].append([gdl,valor])
         else:
             self.cargas[nodo] = [[gdl,valor]]
         return
-        
-
 
     def ensamblar_sistema(self):
         """Ensambla el sistema de ecuaciones"""
@@ -107,11 +105,7 @@ class Reticulado(object):
                     
                 self.f[p]+=fe[i]
             
-        return self.K,self.f   
-
-        
-
-
+        return self.K,self.f    
 
 
 
@@ -124,11 +118,44 @@ class Reticulado(object):
         Ngdl = self.Nnodos * self.Ndimensiones
         gdl_libres = np.arange(Ngdl)
         gdl_restringidos = []
+        u = np.zeros(Ngdl)
+
+
 
         #Identificar gdl_restringidos y llenar u 
         # en valores conocidos.
         #
         # Hint: la funcion numpy.setdiff1d es util
+        
+        for nodo in self.restricciones:
+            restriccion = self.restricciones[nodo]
+#            gdl = restriccion[0]
+#            valor = restriccion[1]
+            
+            x = nodo*2
+            y = nodo*2 + 1
+            if len(restriccion) == 2:
+                
+                gdl_restringidos.append(x)
+                gdl_restringidos.append(y)
+                
+                u[x] = restriccion[0][1]
+                u[y] = restriccion[1][1]
+                
+            else:
+                if restriccion[0][0] ==1:
+                    gdl_restringidos.append(y)
+                    u[y] = restriccion[0][1]
+                else:
+                    gdl_restringidos.append(x)
+                    u[x] = restriccion[0][1]            
+
+        gdl_libres = np.setdiff1d(gdl_libres,gdl_restringidos) #retorna los grados de libertad 
+                                                                #libres de los que no estan restringidos
+        
+        gdl_restringidos = np.array(gdl_restringidos)
+
+
 
 
         #Agregar cargas nodales a vector de cargas 
@@ -137,22 +164,48 @@ class Reticulado(object):
                 gdl = carga[0]
                 valor = carga[1]
                 gdl_global = 2*nodo + gdl
+                self.f[gdl_global] += valor
+
                 
-
-
         #1 Particionar:
         #       K en Kff, Kfc, Kcf y Kcc.
         #       f en ff y fc
         #       u en uf y uc
         
-
+        
+        
+        Kff = self.K[np.ix_(gdl_libres, gdl_libres)]
+        Kfc = self.K[np.ix_(gdl_libres, gdl_restringidos)]
+       # Kcf = Kfc.T   lo dejo comentado porque no es necesario
+        
+        #Kcc = self.K[np.ix_(gdl_restringidos, gdl_restringidos)] lo dejo comentado porque no es necesario
+        
+        
         # Resolver para obtener uf -->  Kff uf = ff - Kfc*uc
         
-        #Asignar uf al vector solucion
+        ff = []
+        for a in gdl_libres:
+            ff.append(self.f[a])
+            
+        uf = np.setdiff1d(u, gdl_restringidos)
+        uc = []
+        
+        for a in u:
+            if valor not in uf:
+                uc.append(valor)
+        uc = np.array(uc)            
+        
+
+        uf = solve(Kff, ff)
+        
         self.u[gdl_libres] = uf
 
-        #Marcar internamente que se tiene solucion
+
         self.tiene_solucion = True
+
+        return self.u
+
+
 
     def obtener_desplazamiento_nodal(self, n):
         """Entrega desplazamientos en el nodo n como un vector numpy de (2x1) o (3x1)
@@ -173,14 +226,6 @@ class Reticulado(object):
             fuerzas[i] = b.obtener_fuerza(self)
 
         return fuerzas
-
-
-
-
-
-
-
-
 
 
 
