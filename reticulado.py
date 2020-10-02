@@ -55,8 +55,12 @@ class Reticulado(object):
         """Agrega una restriccion, dado el nodo, grado de libertad y valor 
         del desplazamiento de dicho grado de libertad
         """
-
-        #Implementar
+        if nodo in self.restricciones:
+            self.restricciones[nodo].append([gdl,valor])
+        else:
+            self.restricciones[nodo] = [[gdl,valor]]
+        return
+        
 
 
 
@@ -64,8 +68,12 @@ class Reticulado(object):
         """Agrega una restriccion, dado el nodo, grado de libertad y valor 
         del la fuerza en la direccion de dicho GDL
         """
-
-        #Implementar
+        if nodo in self.cargas:
+            self.cargas[nodo].append([gdl,valor])
+        else:
+            self.cargas[nodo] = [[gdl,valor]]
+        return
+        
 
 
     def ensamblar_sistema(self):
@@ -76,8 +84,32 @@ class Reticulado(object):
         self.K = np.zeros((Ngdl,Ngdl), dtype=np.double)
         self.f = np.zeros((Ngdl), dtype=np.double)
         self.u = np.zeros((Ngdl), dtype=np.double)
+        
+        for barra in self.barras:
+            
+            nodo1=barra.ni
+            nodo2=barra.nj
+            d=[2*nodo1, ((2*barra.ni)+1), 2*nodo2, ((2*barra.nj)+1)] #vector que define gdl globales a partir de locales
+            
+            
+            #Agregando la contribucion del elemento a la matriz de rigidez global:
+            
+            for i in range (len(d)):
+                p=d[i]
+                for j in range(len(d)):
+                    q=d[j]
+                    
+                    ke=barra.obtener_rigidez(self)
+                    
+                    self.K[p,q]+=ke[i,j]
+ 
+                    fe=barra.obtener_vector_de_cargas(self)
+                    
+                self.f[p]+=fe[i]
+            
+        return self.K,self.f   
 
-        #Implementar
+        
 
 
 
